@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Hukamnama — Sri Harmandir Sahib</title>
+  <style>
+    :root {
+      --gold: #c9a84c;
+      --gold-light: #e8c96a;
+      --gold-dark: #9a7a30;
+      --bg: #0d0d0d;
+      --bg-card: #161616;
+      --bg-elevated: #1e1e1e;
+      --text: #e8e0d0;
+      --text-muted: #8a8070;
+      --border: #2a2820;
+      --gurmukhi: 'Noto Sans Gurmukhi', 'Gurbani Akhar', serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(180deg, #1a1500 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--gold-dark);
+      padding: 32px 24px 24px;
+      text-align: center;
+    }
+
+    .header-symbol {
+      font-size: 2.4rem;
+      color: var(--gold);
+      letter-spacing: 4px;
+      margin-bottom: 12px;
+      font-family: var(--gurmukhi);
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: normal;
+      color: var(--gold-light);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    header p.subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    .date-badge {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 6px 18px;
+      border: 1px solid var(--gold-dark);
+      border-radius: 2px;
+      color: var(--gold);
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+
+    #loading, #error {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+    }
+
+    #error {
+      color: #c07070;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Info bar */
+    .hukamnama-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 32px;
+      padding: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--gold-dark);
+    }
+
+    .meta-item {
+      flex: 1 1 auto;
+      min-width: 160px;
+    }
+
+    .meta-label {
+      font-size: 0.65rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 0.95rem;
+      color: var(--gold-light);
+    }
+
+    .meta-value.gurmukhi {
+      font-family: var(--gurmukhi);
+      font-size: 1.1rem;
+    }
+
+    /* Divider */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 28px 0;
+      color: var(--gold-dark);
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .section-divider::before,
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Verse cards */
+    .verse-card {
+      margin-bottom: 28px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    .verse-card.is-header {
+      border-color: var(--gold-dark);
+      background: #14120a;
+    }
+
+    .verse-gurmukhi {
+      padding: 20px 20px 14px;
+      font-family: var(--gurmukhi);
+      font-size: 1.5rem;
+      line-height: 1.7;
+      color: #f0e8d0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .verse-card.is-header .verse-gurmukhi {
+      color: var(--gold-light);
+      font-size: 1.6rem;
+    }
+
+    .verse-transliteration {
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      font-style: italic;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      line-height: 1.6;
+    }
+
+    .verse-translations {
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .translation-block {
+      padding-left: 12px;
+      border-left: 2px solid var(--border);
+    }
+
+    .translation-block.punjabi {
+      border-left-color: var(--gold-dark);
+    }
+
+    .translation-block.english {
+      border-left-color: #3a5a3a;
+    }
+
+    .translation-lang {
+      font-size: 0.65rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .translation-text {
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    .translation-text.gurmukhi {
+      font-family: var(--gurmukhi);
+      font-size: 1.05rem;
+    }
+
+    /* Rehao marker */
+    .rehao-marker {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 0.7rem;
+      color: var(--gold);
+      letter-spacing: 1px;
+      vertical-align: middle;
+      font-family: sans-serif;
+      font-style: normal;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.5px;
+    }
+
+    footer a {
+      color: var(--gold-dark);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--gold);
+    }
+
+    @media (max-width: 600px) {
+      .verse-gurmukhi { font-size: 1.25rem; }
+      .verse-card.is-header .verse-gurmukhi { font-size: 1.35rem; }
+      header h1 { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-symbol">ੴ</div>
+  <h1>Daily Hukamnama</h1>
+  <p class="subtitle">Sri Harmandir Sahib, Amritsar</p>
+  <div class="date-badge" id="date-display">Loading...</div>
+</header>
+
+<main>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Fetching today's Hukamnama...</p>
+  </div>
+  <div id="error" style="display:none"></div>
+  <div id="content" style="display:none"></div>
+</main>
+
+<footer>
+  Hukamnama sourced from <a href="https://www.banidb.com" target="_blank" rel="noopener">BaniDB</a> &mdash;
+  Sri Guru Granth Sahib Ji
+</footer>
+
+<script>
+  const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  async function loadHukamnama() {
+    try {
+      const res = await fetch('https://api.banidb.com/v2/hukamnamas/today');
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      render(data);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('loading').style.display = 'none';
+    const el = document.getElementById('error');
+    el.style.display = 'block';
+    el.innerHTML = `<p>Could not load Hukamnama.</p><p style="margin-top:8px;font-size:0.85rem">${msg}</p>`;
+  }
+
+  function render(data) {
+    document.getElementById('loading').style.display = 'none';
+
+    // Date
+    const d = data.date && data.date.gregorian;
+    if (d) {
+      document.getElementById('date-display').textContent =
+        `${MONTHS[d.month - 1]} ${d.date}, ${d.year}`;
+    } else {
+      const now = new Date();
+      document.getElementById('date-display').textContent =
+        `${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+    }
+
+    const shabad = data.shabads && data.shabads[0];
+    if (!shabad) { showError('No shabad data found.'); return; }
+
+    const info = shabad.shabadInfo;
+    const verses = shabad.verses || [];
+
+    const content = document.getElementById('content');
+    content.style.display = 'block';
+    content.innerHTML = '';
+
+    // Meta bar
+    const meta = document.createElement('div');
+    meta.className = 'hukamnama-meta';
+    meta.innerHTML = `
+      <div class="meta-item">
+        <div class="meta-label">Source</div>
+        <div class="meta-value">${info.source.english}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Ang (Page)</div>
+        <div class="meta-value">${info.pageNo}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Raag</div>
+        <div class="meta-value">${info.raag.english}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Composer</div>
+        <div class="meta-value">${info.writer.english}</div>
+      </div>
+    `;
+    content.appendChild(meta);
+
+    // Section heading
+    const divider = document.createElement('div');
+    divider.className = 'section-divider';
+    divider.textContent = 'Hukamnama';
+    content.appendChild(divider);
+
+    // Verses
+    verses.forEach((verse, i) => {
+      const gurmukhi = verse.verse && verse.verse.unicode;
+      if (!gurmukhi) return;
+
+      const transliteration = verse.transliteration && verse.transliteration.english;
+
+      // Punjabi: prefer bdb unicode, fall back to ss unicode, then ms unicode
+      const pu = verse.translation && verse.translation.pu;
+      let punjabiText = null;
+      if (pu) {
+        punjabiText = (pu.bdb && pu.bdb.unicode) ||
+                      (pu.ss && pu.ss.unicode) ||
+                      (pu.ms && pu.ms.unicode) ||
+                      (pu.ft && pu.ft.unicode);
+      }
+
+      // English: bdb first, then ssk, then ms
+      const en = verse.translation && verse.translation.en;
+      let englishText = null;
+      if (en) {
+        englishText = en.bdb || en.ssk || en.ms;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'verse-card' + (i === 0 ? ' is-header' : '');
+
+      let html = `<div class="verse-gurmukhi">${escHtml(gurmukhi)}</div>`;
+
+      if (transliteration) {
+        html += `<div class="verse-transliteration">${escHtml(transliteration)}</div>`;
+      }
+
+      const hasTranslations = punjabiText || englishText;
+      if (hasTranslations) {
+        html += `<div class="verse-translations">`;
+        if (punjabiText) {
+          html += `
+            <div class="translation-block punjabi">
+              <div class="translation-lang">Punjabi</div>
+              <div class="translation-text gurmukhi">${escHtml(punjabiText)}</div>
+            </div>`;
+        }
+        if (englishText) {
+          html += `
+            <div class="translation-block english">
+              <div class="translation-lang">English</div>
+              <div class="translation-text">${escHtml(englishText)}</div>
+            </div>`;
+        }
+        html += `</div>`;
+      }
+
+      card.innerHTML = html;
+      content.appendChild(card);
+    });
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  loadHukamnama();
+</script>
+
+</body>
+</html>
