@@ -16,6 +16,9 @@
       --text-muted: #8a8070;
       --border: #2a2820;
       --gurmukhi: 'Noto Sans Gurmukhi', 'Gurbani Akhar', serif;
+      --cyber: #e07020;
+      --cyber-light: #f0943a;
+      --cyber-dark: #a04e10;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -256,6 +259,135 @@
       color: var(--gold);
     }
 
+    /* Cyber Hukamnama */
+    .cyber-section {
+      margin-top: 56px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+
+    .cyber-heading {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .cyber-heading h2 {
+      font-size: 1.1rem;
+      font-weight: normal;
+      color: var(--cyber-light);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .cyber-heading p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .cyber-btn {
+      display: block;
+      margin: 0 auto 32px;
+      padding: 14px 32px;
+      background: transparent;
+      border: 1px solid var(--cyber-dark);
+      color: var(--cyber-light);
+      font-family: 'Georgia', serif;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .cyber-btn:hover {
+      background: rgba(224, 112, 32, 0.1);
+      border-color: var(--cyber);
+    }
+
+    .cyber-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #cyber-loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      display: none;
+    }
+
+    #cyber-loading .spinner {
+      border-top-color: var(--cyber);
+    }
+
+    #cyber-error {
+      text-align: center;
+      padding: 24px;
+      color: #c07070;
+      display: none;
+    }
+
+    #cyber-content {
+      display: none;
+    }
+
+    .cyber-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 32px;
+      padding: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--cyber-dark);
+    }
+
+    .cyber-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 28px 0;
+      color: var(--cyber-dark);
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .cyber-divider::before,
+    .cyber-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .cyber-verse-card {
+      margin-bottom: 28px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    .cyber-verse-card.is-header {
+      border-color: var(--cyber-dark);
+      background: #140e06;
+    }
+
+    .cyber-verse-card .verse-gurmukhi {
+      border-bottom-color: var(--border);
+    }
+
+    .cyber-verse-card.is-header .verse-gurmukhi {
+      color: var(--cyber-light);
+    }
+
+    .cyber-verse-card .translation-block.punjabi {
+      border-left-color: var(--cyber-dark);
+    }
+
+    .cyber-verse-card .translation-block.english {
+      border-left-color: #3a4a5a;
+    }
+
     @media (max-width: 600px) {
       .verse-gurmukhi { font-size: 1.25rem; }
       .verse-card.is-header .verse-gurmukhi { font-size: 1.35rem; }
@@ -279,6 +411,20 @@
   </div>
   <div id="error" style="display:none"></div>
   <div id="content" style="display:none"></div>
+
+  <div class="cyber-section">
+    <div class="cyber-heading">
+      <h2>Cyber Hukamnama</h2>
+      <p>Seek personal guidance — a random shabad from Sri Guru Granth Sahib Ji</p>
+    </div>
+    <button class="cyber-btn" id="cyber-btn" onclick="takeCyberHukamnama()">🙏 Take Your Cyber Hukamnama</button>
+    <div id="cyber-loading">
+      <div class="spinner"></div>
+      <p>Seeking guidance...</p>
+    </div>
+    <div id="cyber-error"></div>
+    <div id="cyber-content"></div>
+  </div>
 </main>
 
 <footer>
@@ -428,6 +574,124 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  async function takeCyberHukamnama() {
+    const btn = document.getElementById('cyber-btn');
+    const loadingEl = document.getElementById('cyber-loading');
+    const errorEl = document.getElementById('cyber-error');
+    const contentEl = document.getElementById('cyber-content');
+
+    btn.disabled = true;
+    loadingEl.style.display = 'block';
+    errorEl.style.display = 'none';
+    contentEl.style.display = 'none';
+    contentEl.innerHTML = '';
+
+    const angNo = Math.floor(Math.random() * 1430) + 1;
+
+    try {
+      const res = await fetch(`https://api.banidb.com/v2/angs/${angNo}/6`);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      renderCyber(data, angNo);
+    } catch (err) {
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'block';
+      errorEl.innerHTML = `<p>Could not fetch Cyber Hukamnama.</p><p style="margin-top:8px;font-size:0.85rem">${err.message}</p>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderCyber(data, angNo) {
+    const loadingEl = document.getElementById('cyber-loading');
+    const contentEl = document.getElementById('cyber-content');
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+
+    const verses = data.verses || [];
+    if (!verses.length) {
+      document.getElementById('cyber-error').style.display = 'block';
+      document.getElementById('cyber-error').innerHTML = '<p>No verses found for this Ang.</p>';
+      return;
+    }
+
+    const source = (verses[0].shabadInfo && verses[0].shabadInfo.source && verses[0].shabadInfo.source.english) || 'Sri Guru Granth Sahib Ji';
+
+    const meta = document.createElement('div');
+    meta.className = 'cyber-meta';
+    meta.innerHTML = `
+      <div class="meta-item">
+        <div class="meta-label">Source</div>
+        <div class="meta-value">${escHtml(source)}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Ang (Page)</div>
+        <div class="meta-value">${angNo}</div>
+      </div>
+    `;
+    contentEl.appendChild(meta);
+
+    const divider = document.createElement('div');
+    divider.className = 'cyber-divider';
+    divider.textContent = 'Your Hukamnama';
+    contentEl.appendChild(divider);
+
+    verses.forEach((verse, i) => {
+      const gurmukhi = verse.verse && verse.verse.unicode;
+      if (!gurmukhi) return;
+
+      const transliteration = verse.transliteration && verse.transliteration.english;
+
+      const pu = verse.translation && verse.translation.pu;
+      let punjabiText = null;
+      if (pu) {
+        punjabiText = (pu.bdb && pu.bdb.unicode) ||
+                      (pu.ss && pu.ss.unicode) ||
+                      (pu.ms && pu.ms.unicode) ||
+                      (pu.ft && pu.ft.unicode);
+      }
+
+      const en = verse.translation && verse.translation.en;
+      let englishText = null;
+      if (en) {
+        englishText = en.bdb || en.ssk || en.ms;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'cyber-verse-card' + (i === 0 ? ' is-header' : '');
+
+      let html = `<div class="verse-gurmukhi">${escHtml(gurmukhi)}</div>`;
+
+      if (transliteration) {
+        html += `<div class="verse-transliteration">${escHtml(transliteration)}</div>`;
+      }
+
+      const hasTranslations = punjabiText || englishText;
+      if (hasTranslations) {
+        html += `<div class="verse-translations">`;
+        if (punjabiText) {
+          html += `
+            <div class="translation-block punjabi">
+              <div class="translation-lang">Punjabi</div>
+              <div class="translation-text gurmukhi">${escHtml(punjabiText)}</div>
+            </div>`;
+        }
+        if (englishText) {
+          html += `
+            <div class="translation-block english">
+              <div class="translation-lang">English</div>
+              <div class="translation-text">${escHtml(englishText)}</div>
+            </div>`;
+        }
+        html += `</div>`;
+      }
+
+      card.innerHTML = html;
+      contentEl.appendChild(card);
+    });
   }
 
   loadHukamnama();
