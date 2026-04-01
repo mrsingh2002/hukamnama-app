@@ -611,14 +611,14 @@
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
 
-    const verses = data.verses || [];
+    const verses = data.page || [];
     if (!verses.length) {
       document.getElementById('cyber-error').style.display = 'block';
       document.getElementById('cyber-error').innerHTML = '<p>No verses found for this Ang.</p>';
       return;
     }
 
-    const source = (verses[0].shabadInfo && verses[0].shabadInfo.source && verses[0].shabadInfo.source.english) || 'Sri Guru Granth Sahib Ji';
+    const source = (data.source && data.source.english) || 'Sri Guru Granth Sahib Ji';
 
     const meta = document.createElement('div');
     meta.className = 'cyber-meta';
