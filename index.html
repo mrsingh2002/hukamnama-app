@@ -393,6 +393,126 @@
       .verse-card.is-header .verse-gurmukhi { font-size: 1.35rem; }
       header h1 { font-size: 1.15rem; }
     }
+
+    /* Listen feature */
+    .listen-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .listen-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--gold-dark);
+      color: var(--gold-light);
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+    }
+
+    .listen-btn:hover { background: #2a2510; border-color: var(--gold); }
+
+    .listen-btn.active { border-color: #c04040; color: #ff8080; }
+
+    .pulse-ring {
+      display: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #c04040;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .pulse-ring::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid #c04040;
+      animation: pulse-anim 1.2s ease-out infinite;
+    }
+
+    .listen-btn.active .pulse-ring { display: inline-block; }
+
+    @keyframes pulse-anim {
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .lang-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .lang-btn {
+      padding: 6px 14px;
+      background: var(--bg-card);
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 0.5px;
+    }
+
+    .lang-btn.active { background: var(--bg-elevated); color: var(--gold-light); }
+
+    .lang-btn:not(:last-child) { border-right: 1px solid var(--border); }
+
+    .verse-card.matched {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px var(--gold-dark),
+                  0 0 24px rgba(201, 168, 76, 0.35),
+                  0 0 48px rgba(201, 168, 76, 0.12);
+      animation: match-glow 0.5s ease-out;
+    }
+
+    @keyframes match-glow {
+      from { box-shadow: 0 0 0 rgba(201, 168, 76, 0); }
+      to {
+        box-shadow: 0 0 0 1px var(--gold-dark),
+                    0 0 24px rgba(201, 168, 76, 0.35),
+                    0 0 48px rgba(201, 168, 76, 0.12);
+      }
+    }
+
+    .transcript-overlay {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(13, 13, 13, 0.94);
+      border-top: 1px solid var(--gold-dark);
+      padding: 10px 20px 14px;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+
+    .transcript-status {
+      font-size: 0.68rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #e06060;
+      margin-bottom: 4px;
+    }
+
+    .transcript-status.found { color: var(--gold); }
+
+    .transcript-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-style: italic;
+      min-height: 1.3em;
+    }
   </style>
 </head>
 <body>
@@ -432,7 +552,14 @@
   Sri Guru Granth Sahib Ji
 </footer>
 
+<div class="transcript-overlay" id="transcript-overlay" style="display:none">
+  <div class="transcript-status" id="transcript-status">Listening...</div>
+  <div class="transcript-text" id="transcript-text"></div>
+</div>
+
 <script>
+  const verseIndex = [];
+
   const MONTHS = [
     'January','February','March','April','May','June',
     'July','August','September','October','November','December'
@@ -509,6 +636,23 @@
     divider.textContent = 'Hukamnama';
     content.appendChild(divider);
 
+    // Listen bar
+    const listenBar = document.createElement('div');
+    listenBar.className = 'listen-bar';
+    listenBar.innerHTML = `
+      <button class="listen-btn" id="listen-btn">
+        <span class="pulse-ring"></span>
+        <span class="btn-label">🎙 Listen to Hukamnama</span>
+      </button>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="lang-en">English</button>
+        <button class="lang-btn" id="lang-pa">Punjabi</button>
+      </div>
+    `;
+    content.appendChild(listenBar);
+
+    verseIndex.length = 0;
+
     // Verses
     verses.forEach((verse, i) => {
       const gurmukhi = verse.verse && verse.verse.unicode;
@@ -562,9 +706,17 @@
         html += `</div>`;
       }
 
+      card.dataset.verseIdx = verseIndex.length;
+      verseIndex.push({
+        translit: (transliteration || '').toLowerCase(),
+        english: (englishText || '').toLowerCase()
+      });
+
       card.innerHTML = html;
       content.appendChild(card);
     });
+
+    ListenFeature.init();
   }
 
   function escHtml(str) {
@@ -693,6 +845,136 @@
       contentEl.appendChild(card);
     });
   }
+
+  const ListenFeature = {
+    recognition: null,
+    isListening: false,
+    currentLang: 'en-GB',
+    noMatchTimer: null,
+    currentMatchIdx: -1,
+    SR: null,
+
+    init() {
+      this.SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById('listen-btn');
+      btn.addEventListener('click', () => {
+        if (!this.SR) {
+          alert('Live listening requires Chrome or a Chromium-based browser.');
+          return;
+        }
+        this.isListening ? this.stop() : this.start();
+      });
+      document.getElementById('lang-en').addEventListener('click', () => this.setLang('en-GB'));
+      document.getElementById('lang-pa').addEventListener('click', () => this.setLang('pa-IN'));
+    },
+
+    setLang(lang) {
+      this.currentLang = lang;
+      document.getElementById('lang-en').classList.toggle('active', lang === 'en-GB');
+      document.getElementById('lang-pa').classList.toggle('active', lang === 'pa-IN');
+      if (this.isListening) { this.stop(); this.start(); }
+    },
+
+    start() {
+      const rec = new this.SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = this.currentLang;
+      rec.onresult = (e) => this.handleResult(e);
+      rec.onerror = (e) => { if (e.error !== 'no-speech') this.stop(); };
+      rec.onend = () => { if (this.isListening) rec.start(); };
+      rec.start();
+      this.recognition = rec;
+      this.isListening = true;
+      this.currentMatchIdx = -1;
+      this.updateUI(true);
+      this.resetNoMatchTimer();
+    },
+
+    stop() {
+      if (this.recognition) { this.recognition.onend = null; this.recognition.stop(); }
+      this.recognition = null;
+      this.isListening = false;
+      clearTimeout(this.noMatchTimer);
+      this.updateUI(false);
+    },
+
+    updateUI(listening) {
+      const btn = document.getElementById('listen-btn');
+      const overlay = document.getElementById('transcript-overlay');
+      if (listening) {
+        btn.classList.add('active');
+        btn.querySelector('.btn-label').textContent = 'Stop Listening';
+        overlay.style.display = 'block';
+        this.setStatus('Listening...', false);
+        document.getElementById('transcript-text').textContent = '';
+      } else {
+        btn.classList.remove('active');
+        btn.querySelector('.btn-label').textContent = '🎙 Listen to Hukamnama';
+        overlay.style.display = 'none';
+        document.querySelectorAll('.verse-card.matched').forEach(el => el.classList.remove('matched'));
+      }
+    },
+
+    setStatus(text, found) {
+      const el = document.getElementById('transcript-status');
+      el.textContent = text;
+      el.classList.toggle('found', found);
+    },
+
+    handleResult(e) {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t + ' ';
+        else interim += t;
+      }
+      const display = (final + interim).trim();
+      document.getElementById('transcript-text').textContent = display || '...';
+
+      const searchText = (final || interim).trim().toLowerCase();
+      if (!searchText) return;
+
+      this.resetNoMatchTimer();
+
+      let bestScore = 0, bestIdx = -1;
+      verseIndex.forEach((v, i) => {
+        const score = this.scoreMatch(searchText, v);
+        if (score > bestScore) { bestScore = score; bestIdx = i; }
+      });
+
+      if (bestScore >= 0.25 && bestIdx !== this.currentMatchIdx) {
+        this.currentMatchIdx = bestIdx;
+        this.highlightVerse(bestIdx);
+        this.setStatus('Match found', true);
+      }
+    },
+
+    scoreMatch(query, verse) {
+      const words = query.split(/\s+/).filter(w => w.length > 2);
+      if (!words.length) return 0;
+      const target = verse.translit + ' ' + verse.english;
+      return words.filter(w => target.includes(w)).length / words.length;
+    },
+
+    highlightVerse(idx) {
+      document.querySelectorAll('.verse-card.matched').forEach(el => el.classList.remove('matched'));
+      const card = document.querySelector(`.verse-card[data-verse-idx="${idx}"]`);
+      if (!card) return;
+      card.classList.add('matched');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    },
+
+    resetNoMatchTimer() {
+      clearTimeout(this.noMatchTimer);
+      this.noMatchTimer = setTimeout(() => {
+        if (this.isListening && this.currentMatchIdx === -1) {
+          this.setStatus('No match found — try speaking more clearly', false);
+        }
+      }, 5000);
+    }
+  };
 
   loadHukamnama();
 </script>
